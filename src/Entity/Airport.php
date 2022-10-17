@@ -2,12 +2,18 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Metadata\ApiProperty;
+use ApiPlatform\Metadata\ApiResource;
 use App\Repository\AirportRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: AirportRepository::class)]
+#[ApiResource]
+#[ApiFilter(SearchFilter::class, properties: ['country_code' => 'exact', 'iata_code' => 'exact', 'icao_code' => 'exact', 'name' => 'partial'])]
 class Airport
 {
     #[ORM\Id]
@@ -36,7 +42,8 @@ class Airport
     #[ORM\Column(length: 255)]
     private ?string $name = null;
 
-    #[ORM\OneToMany(mappedBy: 'from_airport_id', targetEntity: Flight::class)]
+    #[ORM\OneToMany(mappedBy: 'from_airport', targetEntity: Flight::class)]
+    #[ApiProperty(readable: false)]
     private Collection $flights;
 
     public function __construct()

@@ -2,12 +2,21 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Doctrine\Orm\Filter\DateFilter;
+use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Metadata\ApiProperty;
+use ApiPlatform\Metadata\ApiResource;
 use App\Repository\FlightRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: FlightRepository::class)]
+#[ApiResource]
+#[ApiFilter(SearchFilter::class, properties: ['from_airport' => 'exact', 'to_airport' => 'exact'])]
+#[ApiFilter(DateFilter::class, properties: ['departure_time' => 'range', 'arrival_time' => 'range'])]
 class Flight
 {
     #[ORM\Id]
@@ -43,7 +52,7 @@ class Flight
         $this->passengers = new ArrayCollection();
     }
 
-    public function get(): ?int
+    public function getId(): ?int
     {
         return $this->id;
     }
@@ -77,9 +86,9 @@ class Flight
         return $this->from_airport;
     }
 
-    public function setFromAirportId(?Airport $from_airport_id): self
+    public function setFromAirport(?Airport $from_airport): self
     {
-        $this->from_airport_id = $from_airport;
+        $this->from_airport = $from_airport;
 
         return $this;
     }
@@ -89,9 +98,9 @@ class Flight
         return $this->to_airport;
     }
 
-    public function setToAirportId(?Airport $to_airport_id): self
+    public function setToAirport(?Airport $to_airport): self
     {
-        $this->to_airport_id = $to_airport;
+        $this->to_airport = $to_airport;
 
         return $this;
     }
