@@ -32,10 +32,12 @@ class Flight
 
     #[ORM\ManyToOne(inversedBy: 'flights')]
     #[ORM\JoinColumn(nullable: false)]
+    #[ApiProperty(readableLink: true, writableLink: false)]
     private ?Airport $from_airport = null;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
+    #[ApiProperty(readableLink: true, writableLink: false)]
     private ?Airport $to_airport = null;
 
     #[ORM\Column]

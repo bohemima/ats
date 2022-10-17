@@ -40,8 +40,8 @@ class Passenger
     private ?Flight $flight = null;
 
     #[ORM\Column(length: 8)]
-    /*#[ORM\GeneratedValue(strategy: 'CUSTOM')]
-    #[ORM\CustomIdGenerator(class: 'App\Strategy\AutomaticSeatAssignment')]*/
+    //#[ORM\GeneratedValue(strategy: 'CUSTOM')]
+    //#[ORM\CustomIdGenerator(class: 'App\Strategy\AutomaticSeatAssignment')]
     private ?int $seat_assignment = null;
 
     #[ORM\Column(length: 32)]
