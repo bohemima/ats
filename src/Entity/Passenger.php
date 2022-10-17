@@ -2,10 +2,16 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
+use ApiPlatform\Metadata\ApiFilter;
+use ApiPlatform\Metadata\ApiProperty;
+use ApiPlatform\Metadata\ApiResource;
 use App\Repository\PassengerRepository;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: PassengerRepository::class)]
+#[ApiResource]
+#[ApiFilter(SearchFilter::class, properties: ['flight' => 'exact', 'email' => 'exact'])]
 class Passenger
 {
     #[ORM\Id]
@@ -30,9 +36,12 @@ class Passenger
 
     #[ORM\ManyToOne(inversedBy: 'passengers')]
     #[ORM\JoinColumn(nullable: false)]
+    #[ApiProperty(readableLink: true, writableLink: false)]
     private ?Flight $flight = null;
 
     #[ORM\Column(length: 8)]
+    //#[ORM\GeneratedValue(strategy: 'CUSTOM')]
+        //#[ORM\CustomIdGenerator(class: 'App\Strategy\AutomaticSeatAssignment')]
     private ?string $seat_assigment = null;
 
     #[ORM\Column(length: 32)]
