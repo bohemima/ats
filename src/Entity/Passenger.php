@@ -40,9 +40,9 @@ class Passenger
     private ?Flight $flight = null;
 
     #[ORM\Column(length: 8)]
-    //#[ORM\GeneratedValue(strategy: 'CUSTOM')]
-        //#[ORM\CustomIdGenerator(class: 'App\Strategy\AutomaticSeatAssignment')]
-    private ?string $seat_assigment = null;
+    /*#[ORM\GeneratedValue(strategy: 'CUSTOM')]
+    #[ORM\CustomIdGenerator(class: 'App\Strategy\AutomaticSeatAssignment')]*/
+    private ?int $seat_assignment = null;
 
     #[ORM\Column(length: 32)]
     private ?string $passport_number = null;
@@ -124,14 +124,14 @@ class Passenger
         return $this;
     }
 
-    public function getSeatAssigment(): ?string
+    public function getSeatAssignment(): ?int
     {
-        return $this->seat_assigment;
+        return $this->seat_assignment;
     }
 
-    public function setSeatAssigment(string $seat_assigment): self
+    public function setSeatAssignment(int $seat_assignment): self
     {
-        $this->seat_assigment = $seat_assigment;
+        $this->seat_assignment = $seat_assignment;
 
         return $this;
     }
