@@ -25,25 +25,31 @@ class Flight
     private ?int $id = null;
 
     #[ORM\Column]
+    #[Assert\NotBlank, Assert\DateTime]
     private ?\DateTimeImmutable $created_at = null;
 
     #[ORM\Column(nullable: true)]
+    #[Assert\DateTime]
     private ?\DateTimeImmutable $updated_at = null;
 
     #[ORM\ManyToOne(inversedBy: 'flights')]
     #[ORM\JoinColumn(nullable: false)]
     #[ApiProperty(readableLink: true, writableLink: false)]
+    #[Assert\NotBlank, Assert\Valid]
     private ?Airport $from_airport = null;
 
     #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: false)]
     #[ApiProperty(readableLink: true, writableLink: false)]
+    #[Assert\NotBlank, Assert\Valid]
     private ?Airport $to_airport = null;
 
     #[ORM\Column]
+    #[Assert\NotBlank, Assert\DateTime]
     private ?\DateTimeImmutable $departure_time = null;
 
     #[ORM\Column]
+    #[Assert\NotBlank, Assert\DateTime]
     private ?\DateTimeImmutable $arrival_time = null;
 
     #[ORM\OneToMany(mappedBy: 'flight', targetEntity: Passenger::class, orphanRemoval: true)]
