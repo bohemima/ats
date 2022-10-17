@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\AirportRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: AirportRepository::class)]
@@ -29,10 +31,18 @@ class Airport
     private ?string $iata_code = null;
 
     #[ORM\Column(length: 4)]
-    private ?string $icao = null;
+    private ?string $icao_code = null;
 
     #[ORM\Column(length: 255)]
     private ?string $name = null;
+
+    #[ORM\OneToMany(mappedBy: 'from_airport_id', targetEntity: Flight::class)]
+    private Collection $flights;
+
+    public function __construct()
+    {
+        $this->flights = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -99,14 +109,14 @@ class Airport
         return $this;
     }
 
-    public function getIcao(): ?string
+    public function getIcaoCode(): ?string
     {
-        return $this->icao;
+        return $this->icao_code;
     }
 
-    public function setIcao(string $icao): self
+    public function setIcaoCode(string $icao_code): self
     {
-        $this->icao = $icao;
+        $this->icao_code = $icao_code;
 
         return $this;
     }
@@ -119,6 +129,36 @@ class Airport
     public function setName(string $name): self
     {
         $this->name = $name;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Flight>
+     */
+    public function getFlights(): Collection
+    {
+        return $this->flights;
+    }
+
+    public function addFlight(Flight $flight): self
+    {
+        if (!$this->flights->contains($flight)) {
+            $this->flights->add($flight);
+            $flight->setFromAirportId($this);
+        }
+
+        return $this;
+    }
+
+    public function removeFlight(Flight $flight): self
+    {
+        if ($this->flights->removeElement($flight)) {
+            // set the owning side to null (unless already changed)
+            if ($flight->getFromAirportId() === $this) {
+                $flight->setFromAirportId(null);
+            }
+        }
 
         return $this;
     }
