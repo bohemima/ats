@@ -4,54 +4,67 @@ namespace App\Entity;
 
 use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Metadata\ApiFilter;
-use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use App\Repository\AirportRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Serializer\Annotation\MaxDepth;
+use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
+use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: AirportRepository::class)]
-#[ApiResource]
-#[ApiFilter(SearchFilter::class, properties: ['country_code' => 'exact', 'iata_code' => 'exact', 'icao_code' => 'exact', 'name' => 'partial'])]
-class Airport
+#[ORM\HasLifecycleCallbacks]
+#[ApiResource(
+    normalizationContext: [
+        AbstractNormalizer::GROUPS => ['airports:read', 'flights:read', 'timestampable'],
+        AbstractObjectNormalizer::ENABLE_MAX_DEPTH => true
+    ],
+    denormalizationContext: [AbstractNormalizer::GROUPS => ['airports:write']],
+)]
+class Airport implements TimestampableInterface
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column]
+    use TimestampableTrait;
+
+    #[ORM\Id, ORM\GeneratedValue, ORM\Column]
+    #[Groups(['airports:read'])]
     private ?int $id = null;
-
-    #[ORM\Column]
-    #[Assert\NotBlank, Assert\DateTime]
-    private ?\DateTimeImmutable $created_at = null;
-
-    #[ORM\Column(nullable: true)]
-    #[Assert\DateTime]
-    private ?\DateTimeImmutable $updated_at = null;
 
     #[ORM\Column(length: 2)]
     #[Assert\NotBlank]
-    private ?string $country_code = null;
+    #[Groups(['airports:read', 'airports:write'])]
+    #[ApiFilter(SearchFilter::class, strategy: 'exact')]
+    private ?string $countryCode = null;
 
     #[ORM\Column(length: 255)]
     #[Assert\NotBlank]
+    #[Groups(['airports:read', 'airports:write'])]
+    #[ApiFilter(SearchFilter::class, strategy: 'exact')]
     private ?string $city = null;
 
     #[ORM\Column(length: 3)]
     #[Assert\NotBlank]
-    private ?string $iata_code = null;
+    #[Groups(['airports:read', 'airports:write'])]
+    #[ApiFilter(SearchFilter::class, strategy: 'exact')]
+    private ?string $iataCode = null;
 
     #[ORM\Column(length: 4)]
     #[Assert\NotBlank]
-    private ?string $icao_code = null;
+    #[Groups(['airports:read', 'airports:write'])]
+    #[ApiFilter(SearchFilter::class, strategy: 'exact')]
+    private ?string $icaoCode = null;
 
     #[ORM\Column(length: 255)]
     #[Assert\NotBlank]
+    #[Groups(['airports:read', 'airports:write'])]
+    #[ApiFilter(SearchFilter::class, strategy: 'partial')]
     private ?string $name = null;
 
-    #[ORM\OneToMany(mappedBy: 'from_airport', targetEntity: Flight::class)]
-    #[ApiProperty(readable: false)]
+    #[ORM\OneToMany(mappedBy: 'fromAirport', targetEntity: Flight::class)]
+    #[Groups(['airports:read'])]
+    #[MaxDepth(1)]
     private Collection $flights;
 
     public function __construct()
@@ -64,38 +77,14 @@ class Airport
         return $this->id;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
-    {
-        return $this->created_at;
-    }
-
-    public function setCreatedAt(\DateTimeImmutable $created_at): self
-    {
-        $this->created_at = $created_at;
-
-        return $this;
-    }
-
-    public function getUpdatedAt(): ?\DateTimeImmutable
-    {
-        return $this->updated_at;
-    }
-
-    public function setUpdatedAt(?\DateTimeImmutable $updated_at): self
-    {
-        $this->updated_at = $updated_at;
-
-        return $this;
-    }
-
     public function getCountryCode(): ?string
     {
-        return $this->country_code;
+        return $this->countryCode;
     }
 
-    public function setCountryCode(string $country_code): self
+    public function setCountryCode(string $countryCode): self
     {
-        $this->country_code = $country_code;
+        $this->countryCode = $countryCode;
 
         return $this;
     }
@@ -114,24 +103,24 @@ class Airport
 
     public function getIataCode(): ?string
     {
-        return $this->iata_code;
+        return $this->iataCode;
     }
 
-    public function setIataCode(string $iata_code): self
+    public function setIataCode(string $iataCode): self
     {
-        $this->iata_code = $iata_code;
+        $this->iataCode = $iataCode;
 
         return $this;
     }
 
     public function getIcaoCode(): ?string
     {
-        return $this->icao_code;
+        return $this->icaoCode;
     }
 
-    public function setIcaoCode(string $icao_code): self
+    public function setIcaoCode(string $icaoCode): self
     {
-        $this->icao_code = $icao_code;
+        $this->icaoCode = $icaoCode;
 
         return $this;
     }

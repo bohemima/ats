@@ -5,54 +5,63 @@ namespace App\Entity;
 use ApiPlatform\Doctrine\Orm\Filter\DateFilter;
 use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Metadata\ApiFilter;
-use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
 use App\Repository\FlightRepository;
+use DateTimeInterface;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Serializer\Annotation\MaxDepth;
+use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
+use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
 use Symfony\Component\Validator\Constraints as Assert;
 
 #[ORM\Entity(repositoryClass: FlightRepository::class)]
-#[ApiResource]
-#[ApiFilter(SearchFilter::class, properties: ['from_airport' => 'exact', 'to_airport' => 'exact'])]
-#[ApiFilter(DateFilter::class, properties: ['departure_time' => 'range', 'arrival_time' => 'range'])]
-class Flight
+#[ORM\HasLifecycleCallbacks]
+#[ApiResource(
+    normalizationContext: [
+        AbstractObjectNormalizer::ENABLE_MAX_DEPTH => true,
+        AbstractNormalizer::GROUPS => ['flights:read', 'airports:read', 'timestampable']
+    ],
+    denormalizationContext: [AbstractNormalizer::GROUPS => ['flights:write']],
+)]
+class Flight implements TimestampableInterface
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column]
+    use TimestampableTrait;
+
+    #[ORM\Id, ORM\GeneratedValue, ORM\Column]
+    #[Groups(['flights:read'])]
     private ?int $id = null;
 
-    #[ORM\Column]
-    #[Assert\NotBlank, Assert\DateTime]
-    private ?\DateTimeImmutable $created_at = null;
-
-    #[ORM\Column(nullable: true)]
-    #[Assert\DateTime]
-    private ?\DateTimeImmutable $updated_at = null;
-
-    #[ORM\ManyToOne(inversedBy: 'flights')]
-    #[ORM\JoinColumn(nullable: false)]
-    #[ApiProperty(readableLink: true, writableLink: false)]
+    #[ORM\ManyToOne(inversedBy: 'flights'), ORM\JoinColumn(nullable: false)]
     #[Assert\NotBlank, Assert\Valid]
-    private ?Airport $from_airport = null;
+    #[ApiFilter(SearchFilter::class, strategy: 'exact')]
+    #[Groups(['flights:read', 'flights:write'])]
+    #[MaxDepth(1)]
+    private ?Airport $fromAirport = null;
 
-    #[ORM\ManyToOne]
-    #[ORM\JoinColumn(nullable: false)]
-    #[ApiProperty(readableLink: true, writableLink: false)]
+    #[ORM\ManyToOne, ORM\JoinColumn(nullable: false)]
     #[Assert\NotBlank, Assert\Valid]
-    private ?Airport $to_airport = null;
+    #[ApiFilter(SearchFilter::class, strategy: 'exact')]
+    #[Groups(['flights:read', 'flights:write'])]
+    #[MaxDepth(1)]
+    private ?Airport $toAirport = null;
 
-    #[ORM\Column]
-    #[Assert\NotBlank, Assert\DateTime]
-    private ?\DateTimeImmutable $departure_time = null;
+    #[ORM\Column(type: 'datetime')]
+    #[Assert\NotBlank, Assert\Type(DateTimeInterface::class)]
+    #[ApiFilter(DateFilter::class, strategy: 'range')]
+    #[Groups(['flights:read', 'flights:write'])]
+    private ?\DateTimeInterface $departureTime = null;
 
-    #[ORM\Column]
-    #[Assert\NotBlank, Assert\DateTime]
-    private ?\DateTimeImmutable $arrival_time = null;
+    #[ORM\Column(type: 'datetime')]
+    #[Assert\NotBlank, Assert\Type(DateTimeInterface::class)]
+    #[ApiFilter(DateFilter::class, strategy: 'range')]
+    #[Groups(['flights:read', 'flights:write'])]
+    private ?\DateTimeInterface $arrivalTime = null;
 
     #[ORM\OneToMany(mappedBy: 'flight', targetEntity: Passenger::class, orphanRemoval: true)]
+    #[Groups(['flights:read'])]
     private Collection $passengers;
 
     public function __construct()
@@ -65,74 +74,50 @@ class Flight
         return $this->id;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
-    {
-        return $this->created_at;
-    }
-
-    public function setCreatedAt(\DateTimeImmutable $created_at): self
-    {
-        $this->created_at = $created_at;
-
-        return $this;
-    }
-
-    public function getUpdatedAt(): ?\DateTimeImmutable
-    {
-        return $this->updated_at;
-    }
-
-    public function setUpdatedAt(?\DateTimeImmutable $updated_at): self
-    {
-        $this->updated_at = $updated_at;
-
-        return $this;
-    }
-
     public function getFromAirport(): ?Airport
     {
-        return $this->from_airport;
+        return $this->fromAirport;
     }
 
-    public function setFromAirport(?Airport $from_airport): self
+    public function setFromAirport(?Airport $fromAirport): self
     {
-        $this->from_airport = $from_airport;
+        $this->fromAirport = $fromAirport;
 
         return $this;
     }
 
     public function getToAirport(): ?Airport
     {
-        return $this->to_airport;
+        return $this->toAirport;
     }
 
-    public function setToAirport(?Airport $to_airport): self
+    public function setToAirport(?Airport $toAirport): self
     {
-        $this->to_airport = $to_airport;
+        $this->toAirport = $toAirport;
 
         return $this;
     }
 
-    public function getDepartureTime(): ?\DateTimeImmutable
+    public function getDepartureTime(): ?\DateTimeInterface
     {
-        return $this->departure_time;
+        return $this->departureTime;
     }
 
-    public function setDepartureTime(\DateTimeImmutable $departure_time): self
+    public function setDepartureTime(\DateTimeInterface $departureTime): self
     {
-        $this->departure_time = $departure_time;
+        $this->departureTime = $departureTime;
 
         return $this;
     }
 
-    public function getArrivalTime(): ?\DateTimeImmutable
+    public function getArrivalTime(): ?\DateTimeInterface
     {
-        return $this->arrival_time;
+        return $this->arrivalTime;
     }
 
-    public function setArrivalTime(\DateTimeImmutable $arrival_time): self
+    public function setArrivalTime(\DateTimeInterface $arrivalTime): self
     {
-        $this->arrival_time = $arrival_time;
+        $this->arrivalTime = $arrivalTime;
 
         return $this;
     }

@@ -4,98 +4,133 @@ namespace App\Entity;
 
 use ApiPlatform\Doctrine\Orm\Filter\SearchFilter;
 use ApiPlatform\Metadata\ApiFilter;
-use ApiPlatform\Metadata\ApiProperty;
 use ApiPlatform\Metadata\ApiResource;
+use ApiPlatform\Metadata\Delete;
+use ApiPlatform\Metadata\Get;
+use ApiPlatform\Metadata\GetCollection;
+use ApiPlatform\Metadata\Patch;
+use ApiPlatform\Metadata\Post;
+use ApiPlatform\Metadata\Put;
 use App\Repository\PassengerRepository;
+use App\Validator\MaxPassengers;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\ORM\Event\LifecycleEventArgs;
 use Doctrine\ORM\Mapping as ORM;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
+use Symfony\Component\Serializer\Annotation\Groups;
+use Symfony\Component\Serializer\Annotation\MaxDepth;
+use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
+use Symfony\Component\Serializer\Normalizer\AbstractObjectNormalizer;
+use Symfony\Component\Validator\Constraints as Assert;
+
 
 #[ORM\Entity(repositoryClass: PassengerRepository::class)]
-#[ApiResource]
-#[ApiFilter(SearchFilter::class, properties: ['flight' => 'exact', 'email' => 'exact'])]
-class Passenger
+#[ORM\HasLifecycleCallbacks]
+#[ApiResource(
+    operations: [
+        new GetCollection(),
+        new Get(),
+        new Post(),
+        new Put(),
+        new Delete(),
+        new Patch(denormalizationContext: [AbstractNormalizer::GROUPS => ['passengers:write', 'passengers:patch']])
+    ],
+    normalizationContext: [
+        AbstractObjectNormalizer::ENABLE_MAX_DEPTH => true,
+        AbstractNormalizer::GROUPS => ['passengers:read', 'flights:read', 'timestampable']
+    ],
+    denormalizationContext: [AbstractNormalizer::GROUPS => ['passengers:write']]
+)]
+#[UniqueEntity(
+    fields: ['flight', 'seatAssignment'],
+    message: 'This seat has already been taken on this flight.',
+    errorPath: 'seatAssignment',
+)]
+class Passenger implements TimestampableInterface
 {
-    #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column]
+    use TimestampableTrait;
+
+    #[ORM\Id, ORM\GeneratedValue, ORM\Column]
+    #[Groups(['passengers:read'])]
     private ?int $id = null;
 
-    #[ORM\Column]
-    private ?\DateTimeImmutable $created_at = null;
-
-    #[ORM\Column(nullable: true)]
-    private ?\DateTimeImmutable $updated_at = null;
+    #[ORM\Column(length: 255)]
+    #[Assert\NotBlank, Assert\Length(min: 2, max: 255)]
+    #[Groups(['passengers:read', 'passengers:write'])]
+    private ?string $givenName = null;
 
     #[ORM\Column(length: 255)]
-    private ?string $given_name = null;
+    #[Assert\NotBlank, Assert\Length(min: 2, max: 255)]
+    #[Groups(['passengers:read', 'passengers:write'])]
+    private ?string $familyName = null;
 
     #[ORM\Column(length: 255)]
-    private ?string $family_name = null;
-
-    #[ORM\Column(length: 255)]
+    #[Assert\NotBlank, Assert\Email]
+    #[Groups(['passengers:read', 'passengers:write'])]
+    #[ApiFilter(SearchFilter::class, strategy: 'exact')]
     private ?string $email = null;
 
-    #[ORM\ManyToOne(inversedBy: 'passengers')]
-    #[ORM\JoinColumn(nullable: false)]
-    #[ApiProperty(readableLink: true, writableLink: false)]
+    #[ORM\ManyToOne(inversedBy: 'passengers'), ORM\JoinColumn(nullable: false)]
+    #[Assert\NotBlank, Assert\Valid]
+    #[Groups(['passengers:read', 'passengers:write'])]
+    #[MaxDepth(1)]
+    #[MaxPassengers(max: 32)]
     private ?Flight $flight = null;
 
     #[ORM\Column(length: 8)]
-    /*#[ORM\GeneratedValue(strategy: 'CUSTOM')]
-    #[ORM\CustomIdGenerator(class: 'App\Strategy\AutomaticSeatAssignment')]*/
-    private ?int $seat_assignment = null;
+    #[Groups(['passengers:read', 'passengers:patch'])]
+    private ?int $seatAssignment = null;
 
     #[ORM\Column(length: 32)]
-    private ?string $passport_number = null;
+    #[Assert\NotBlank, Assert\Length(min: 10, max: 32)]
+    #[Groups(['passengers:read', 'passengers:write'])]
+    private ?string $passportNumber = null;
+
+    /** @return ArrayCollection<int> */
+    protected function getAvailableSeats(): ArrayCollection
+    {
+        $assignedSeats = $this
+            ->getFlight()
+            ->getPassengers()
+            ->map(fn(Passenger $passenger) => $passenger->getSeatAssignment())
+            ->getValues();
+
+        return (new ArrayCollection(range(1, 32)))
+            ->filter(fn($seat) => !in_array($seat, $assignedSeats));
+    }
+
+    #[ORM\PrePersist]
+    public function automaticSeatAssignment(LifecycleEventArgs $args)
+    {
+        $seat = array_rand($this->getAvailableSeats()->toArray());
+        $this->setSeatAssignment($seat);
+    }
 
     public function getId(): ?int
     {
         return $this->id;
     }
 
-    public function getCreatedAt(): ?\DateTimeImmutable
-    {
-        return $this->created_at;
-    }
-
-    public function setCreatedAt(\DateTimeImmutable $created_at): self
-    {
-        $this->created_at = $created_at;
-
-        return $this;
-    }
-
-    public function getUpdatedAt(): ?\DateTimeImmutable
-    {
-        return $this->updated_at;
-    }
-
-    public function setUpdatedAt(?\DateTimeImmutable $updated_at): self
-    {
-        $this->updated_at = $updated_at;
-
-        return $this;
-    }
-
     public function getGivenName(): ?string
     {
-        return $this->given_name;
+        return $this->givenName;
     }
 
-    public function setGivenName(string $given_name): self
+    public function setGivenName(string $givenName): self
     {
-        $this->given_name = $given_name;
+        $this->givenName = $givenName;
 
         return $this;
     }
 
     public function getFamilyName(): ?string
     {
-        return $this->family_name;
+        return $this->familyName;
     }
 
-    public function setFamilyName(string $family_name): self
+    public function setFamilyName(string $familyName): self
     {
-        $this->family_name = $family_name;
+        $this->familyName = $familyName;
 
         return $this;
     }
@@ -126,24 +161,24 @@ class Passenger
 
     public function getSeatAssignment(): ?int
     {
-        return $this->seat_assignment;
+        return $this->seatAssignment;
     }
 
-    public function setSeatAssignment(int $seat_assignment): self
+    public function setSeatAssignment(int $seatAssignment): self
     {
-        $this->seat_assignment = $seat_assignment;
+        $this->seatAssignment = $seatAssignment;
 
         return $this;
     }
 
     public function getPassportNumber(): ?string
     {
-        return $this->passport_number;
+        return $this->passportNumber;
     }
 
-    public function setPassportNumber(string $passport_number): self
+    public function setPassportNumber(string $passportNumber): self
     {
-        $this->passport_number = $passport_number;
+        $this->passportNumber = $passportNumber;
 
         return $this;
     }
