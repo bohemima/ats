@@ -79,6 +79,7 @@ class Passenger implements TimestampableInterface
 
     #[ORM\Column(length: 8)]
     #[Groups(['passengers:read', 'passengers:patch'])]
+    #[Assert\Range(min: 1, max: 32)]
     private ?int $seatAssignment = null;
 
     #[ORM\Column(length: 32)]
